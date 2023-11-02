@@ -6,7 +6,9 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-axum = "0.6.20"
+axum = { version = "0.6.20", features = ["json", "macros"]}
+ecdar-protobuf = { git = "https://github.com/ECDAR-AAU-SW-P5/Ecdar-ProtoBuf-rs", version = "0.1.0", features = ["client", "serde"] }
 ecdar-web-macros = { path = "../ecdar-web-macros" }
+serde = { version = "1.0.190", features = ["derive"] }
 tokio = { version = "1.33.0", features = ["rt", "macros", "rt-multi-thread"] }
 

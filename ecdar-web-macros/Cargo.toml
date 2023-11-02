@@ -9,3 +9,5 @@ proc-macro = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+convert_case = "0.6.0"
+ecdar-protobuf-transpiler = { git = "https://github.com/ECDAR-AAU-SW-P5/Ecdar-ProtoBuf-Transpiler-rs", version = "0.1.0" }
