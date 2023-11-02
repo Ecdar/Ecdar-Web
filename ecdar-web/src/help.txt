@@ -1,0 +1,10 @@
+Usage: ecdar-web [Options]
+
+-r OR --root  <folder>  -- folder being the root folder of the build of Ecdar-GUI-Web.
+                        |  Default = .
+
+-s OR --serve <ip:port> -- where and what port to serve the server. 
+                        |  Default = 0.0.0.0:3000  -- means localhost port 3000.
+
+-h OR --help            -- Opens this message
+

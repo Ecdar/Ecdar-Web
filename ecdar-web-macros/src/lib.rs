@@ -9,7 +9,7 @@ pub fn add_endpoints(app_name: TokenStream) -> TokenStream {
         let name = service.name.to_case(Case::Pascal);
         for endpoint in service.endpoints {
             rtn += format!(
-                ".route(\"/{name}/{}\", get({}))",
+                r#".route("/{name}/{}", get({}))"#,
                 endpoint.name,
                 get_fn_name(service.name, endpoint.name)
             )
@@ -20,7 +20,6 @@ pub fn add_endpoints(app_name: TokenStream) -> TokenStream {
     rtn.to_string().parse().unwrap()
 }
 
-
 #[proc_macro]
 pub fn add_endpoint_functions(_: TokenStream) -> TokenStream {
     let mut rtn = String::new();
@@ -28,31 +27,41 @@ pub fn add_endpoint_functions(_: TokenStream) -> TokenStream {
     for service in services {
         for endpoint in service.endpoints {
             let fn_name = get_fn_name(service.name, endpoint.name);
+            let out_type = fn_name.to_case(Case::Pascal);
+            let rtn_type = endpoint.output_type.to_case(Case::Pascal);
+            let body = if endpoint.input_type != "()" {
+                format!("body : {}", endpoint.input_type.to_case(Case::Pascal))
+            } else {
+                "".into()
+            };
 
-            let function_body = 
+            let module = service.name.to_case(Case::Snake);
+            let client = service.name.to_case(Case::Pascal);
+
+            let endpoint_fn = endpoint.name.to_case(Case::Snake);
+            let endpoint_fn_in = if endpoint.input_type != "()" {
+                "payload.body"
+            } else {
+                "()"
+            };
+
+            rtn = rtn + [
                 format!(
-                    "\tlet mut connect = {}_client::{}Client::connect(String::from(\"http://\") + payload.ip.as_str()).await.map_err(|_| StatusCode::MISDIRECTED_REQUEST)?;",
-                    service.name.to_case(Case::Snake),
-                    service.name.to_case(Case::Pascal)
+                    "#[derive(serde::Serialize, serde::Deserialize)]\npub struct In{out_type} {{ ip : String, {body}}}\n",
+                ),
+                format!(
+                    "pub async fn {fn_name}(Json(payload) : Json<In{out_type}>) -> Result<Json<{rtn_type}>, StatusCode> {{",
+                ),
+                format!(
+                    r#"let mut connect = {module}_client::{client}Client::connect(String::from("http://") + payload.ip.as_str()).await.map_err(|_| StatusCode::MISDIRECTED_REQUEST)?;"#,
+                ),
+                format!(
+                    r#"Ok(Json(connect.{endpoint_fn}({endpoint_fn_in}).await.map_err(|_| StatusCode::BAD_REQUEST)?.into_inner()))"#, 
+                ),
+                format!(
+                    "}}"
                 )
-                + format!(
-                    "\n\tOk(Json(connect.{}({}).await.map_err(|_| StatusCode::BAD_REQUEST)?.into_inner()))", 
-                    endpoint.name.to_case(Case::Snake),
-                    if endpoint.input_type != "()" { "payload.body" } else { "()" }
-                ).as_str();
-            rtn = rtn 
-            + format!(
-                "#[derive(serde::Serialize, serde::Deserialize)]\npub struct In{} {{ ip : String, {}}}\n",
-                fn_name.to_case(Case::Pascal),
-                if endpoint.input_type != "()" { format!("body : {}", endpoint.input_type.to_case(Case::Pascal)) } else { "".into() }
-            ).as_str()
-            + format!(
-                "pub async fn {}(Json(payload) : Json<In{}>) -> Result<Json<{}>, StatusCode>{{\n{function_body}\n}}\n",
-                fn_name,
-                fn_name.to_case(Case::Pascal),
-                endpoint.output_type.to_case(Case::Pascal),
-            )
-            .as_str();
+            ].join("\n").as_str() + "\n";
         }
     }
 
