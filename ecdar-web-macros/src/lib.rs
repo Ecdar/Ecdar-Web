@@ -2,76 +2,73 @@ use convert_case::*;
 use ecdar_protobuf_transpiler::SERVICES as services;
 use proc_macro::TokenStream;
 
-#[proc_macro]
-pub fn add_endpoints(app_name: TokenStream) -> TokenStream {
-    let mut rtn = app_name.to_string();
-    for service in services {
-        let name = service.name.to_case(Case::Pascal);
-        for endpoint in service.endpoints {
-            rtn += format!(
-                r#".route("/{name}/{}", get({}))"#,
-                endpoint.name,
-                get_fn_name(service.name, endpoint.name)
-            )
-            .as_str();
+trait ToBodyType {
+    fn to_body_type(&self) -> String;
+}
+
+impl ToBodyType for ecdar_protobuf_transpiler::ProtobuffTypes {
+    fn to_body_type(&self) -> String {
+        let rust_type = self.to_rust_type();
+        match rust_type.as_str() {
+            "()" => "".into(),
+            _ => format!("body : {rust_type}"),
         }
     }
+}
 
-    rtn.to_string().parse().unwrap()
+#[proc_macro]
+pub fn add_endpoints(app_name: TokenStream) -> TokenStream {
+    (app_name.to_string()
+        + ecdar_protobuf_transpiler::compile(|var| {
+            format!(
+                r#".route("/{}/{}", get({}))"#,
+                var.service_name, var.endpoint_name, var.fn_name,
+            )
+        })
+        .as_str())
+    .print()
+    .parse()
+    .unwrap()
 }
 
 #[proc_macro]
 pub fn add_endpoint_functions(_: TokenStream) -> TokenStream {
-    let mut rtn = String::new();
-
-    for service in services {
-        for endpoint in service.endpoints {
-            let fn_name = get_fn_name(service.name, endpoint.name);
-            let out_type = fn_name.to_case(Case::Pascal);
-            let rtn_type = endpoint.output_type.to_case(Case::Pascal);
-            let body = if endpoint.input_type != "()" {
-                format!("body : {}", endpoint.input_type.to_case(Case::Pascal))
-            } else {
-                "".into()
-            };
-
-            let module = service.name.to_case(Case::Snake);
-            let client = service.name.to_case(Case::Pascal);
-
-            let endpoint_fn = endpoint.name.to_case(Case::Snake);
-            let endpoint_fn_in = if endpoint.input_type != "()" {
-                "payload.body"
-            } else {
-                "()"
-            };
-
-            rtn = rtn + [
-                format!(
-                    "#[derive(serde::Serialize, serde::Deserialize)]\npub struct In{out_type} {{ ip : String, {body}}}\n",
-                ),
-                format!(
-                    "pub async fn {fn_name}(Json(payload) : Json<In{out_type}>) -> Result<Json<{rtn_type}>, StatusCode> {{",
-                ),
-                format!(
-                    r#"let mut connect = {module}_client::{client}Client::connect(String::from("http://") + payload.ip.as_str()).await.map_err(|_| StatusCode::MISDIRECTED_REQUEST)?;"#,
-                ),
-                format!(
-                    r#"Ok(Json(connect.{endpoint_fn}({endpoint_fn_in}).await.map_err(|_| StatusCode::BAD_REQUEST)?.into_inner()))"#, 
-                ),
-                format!(
-                    "}}"
-                )
-            ].join("\n").as_str() + "\n";
-        }
-    }
-
-    rtn.parse().unwrap()
+    ecdar_protobuf_transpiler::compile(|var|
+         [
+            format!(
+                "#[derive(serde::Serialize, serde::Deserialize)]\npub {in_struct}\n",
+                in_struct = var.in_struct
+            ),
+            format!(
+                "pub async fn {fn_name}(Json(payload) : Json<{in_struct_name}>) -> Result<Json<{rtn_struct}>, StatusCode> {{",
+                fn_name = var.fn_name,
+                in_struct_name = var.in_struct_name,
+                rtn_struct = var.rtn_struct,
+            ),
+            format!(
+                r#"let mut connect = {module}_client::{client}Client::connect(String::from("http://") + payload.ip.as_str()).await.map_err(|_| StatusCode::MISDIRECTED_REQUEST)?;"#,
+                module = var.service_name.to_case(Case::Snake),
+                client = var.service_name.to_case(Case::Pascal)
+            ),
+            format!(
+                r#"Ok(Json(connect.{endpoint_fn}({endpoint_fn_in}).await.map_err(|_| StatusCode::BAD_REQUEST)?.into_inner()))"#, 
+                endpoint_fn = var.endpoint_name.to_case(Case::Snake),
+                endpoint_fn_in = if var.in_struct_has_body { "payload.body" } else { "()" },
+            ),
+            format!(
+                "}}"
+            )
+        ].join("\n")
+    ).print().parse().unwrap()
 }
 
-fn get_fn_name(service_name: &str, enpoint_name: &str) -> String {
-    format!(
-        "{}_{}",
-        service_name.to_case(Case::Snake),
-        enpoint_name.to_case(Case::Snake)
-    )
+trait Print {
+    fn print(self) -> Self;
+}
+
+impl Print for String {
+    fn print(self) -> Self {
+        println!("{self}");
+        self
+    }
 }
