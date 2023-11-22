@@ -11,3 +11,6 @@ proc-macro = true
 [dependencies]
 convert_case = "0.6.0"
 ecdar-protobuf-transpiler = { git = "https://github.com/ECDAR-AAU-SW-P5/Ecdar-ProtoBuf-Transpiler-rs", version = "0.1.0" }
+proc-macro2 = "1.0.69"
+quote = "1.0.33"
+

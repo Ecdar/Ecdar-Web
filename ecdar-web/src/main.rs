@@ -2,7 +2,6 @@ pub mod configuration;
 use configuration::Configuration;
 
 use axum::{http::*, routing::*, *};
-use ecdar_protobuf::services::*;
 use std::result::Result;
 use tower_http::services::ServeDir;
 
