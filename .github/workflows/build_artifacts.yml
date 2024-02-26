@@ -30,7 +30,7 @@ jobs:
           args: --release
       - uses: actions/upload-artifact@v3
         with:
-          name: reveaal-${{ matrix.os }}
-          path: ${{ runner.os == 'Windows' && 'target/release/reveaal.exe' || 'target/release/reveaal' }}
+          name: ecdar-web-${{ matrix.os }}
+          path: ${{ runner.os == 'Windows' && 'target/release/ecdar-web.exe' || 'target/release/ecdar-web' }}
           if-no-files-found: error
           retention-days: 7
