@@ -3,8 +3,12 @@ name: Build Artifacts
 on:
   workflow_dispatch:
   push:
+
 env:
   CARGO_NET_GIT_FETCH_WITH_CLI: true
+
+permissions:
+  repository-projects: write
 
 jobs:
   build:
