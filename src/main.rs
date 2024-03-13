@@ -1,4 +1,4 @@
-use axum::{http::*, routing::*, *};
+use axum::{routing::*, *};
 use clap::Parser;
 use ecdar_web::{add_endpoint_functions, add_endpoints};
 use std::env::current_dir;
