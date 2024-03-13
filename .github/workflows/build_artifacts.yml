@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
 
-env:
+#env:
   #CARGO_NET_GIT_FETCH_WITH_CLI: true
 
 permissions:
